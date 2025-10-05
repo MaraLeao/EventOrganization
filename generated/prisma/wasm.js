@@ -153,7 +153,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\eusou\\OneDrive\\Desktop\\clones\\EventOrganization\\generated\\prisma",
+      "value": "/home/clara/Git/EventOrganization/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -162,12 +162,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "windows",
+        "value": "debian-openssl-3.0.x",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\eusou\\OneDrive\\Desktop\\clones\\EventOrganization\\prisma\\schema.prisma",
+    "sourceFilePath": "/home/clara/Git/EventOrganization/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

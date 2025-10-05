@@ -1,9 +1,15 @@
 {
   "name": "eventorganization",
   "version": "1.0.0",
+  "type": "module",
   "description": "Api event organization2",
   "main": "index.js",
   "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,14 +23,20 @@
     "url": "https://github.com/MaraLeao/EventOrganization/issues"
   },
   "homepage": "https://github.com/MaraLeao/EventOrganization#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.1.11"
+  },
   "devDependencies": {
+    "@prisma/client": "^6.16.3",
+    "@types/express": "^5.0.0",
     "@types/node": "^24.6.2",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^6.16.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@prisma/client": "^6.16.3",
-    "express": "^5.1.0"
   }
 }
