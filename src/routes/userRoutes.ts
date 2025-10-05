@@ -13,14 +13,40 @@ const userController = new UserController();
  *       properties:
  *         id:
  *           type: string
+ *           description: ID único do usuário
  *         name:
  *           type: string
+ *           description: Nome do usuário
  *         email:
  *           type: string
+ *           format: email
+ *           description: Email único do usuário
  *         createdAt:
  *           type: string
+ *           format: date-time
+ *           description: Data de criação do usuário
  *         updatedAt:
  *           type: string
+ *           format: date-time
+ *           description: Data da última atualização
+ *     UserInput:
+ *       type: object
+ *       required:
+ *         - name
+ *         - email
+ *         - password
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Nome do usuário
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email único do usuário
+ *         password:
+ *           type: string
+ *           format: password
+ *           description: Senha do usuário
  */
 
 /**
@@ -34,21 +60,18 @@ const userController = new UserController();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *             $ref: '#/components/schemas/UserInput'
  *     responses:
  *       201:
  *         description: Usuário criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Dados inválidos
+ *       409:
+ *         description: Email já cadastrado
  */
 router.post('/', (req, res) => userController.create(req, res));
 
@@ -60,7 +83,13 @@ router.post('/', (req, res) => userController.create(req, res));
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: Lista de usuários
+ *         description: Lista de usuários retornada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/User'
  */
 router.get('/', (req, res) => userController.findAll(req, res));
 
@@ -76,9 +105,16 @@ router.get('/', (req, res) => userController.findAll(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID do usuário
  *     responses:
  *       200:
  *         description: Usuário encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       404:
+ *         description: Usuário não encontrado
  */
 router.get('/:id', (req, res) => userController.findOne(req, res));
 
@@ -94,6 +130,7 @@ router.get('/:id', (req, res) => userController.findOne(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID do usuário
  *     requestBody:
  *       required: true
  *       content:
@@ -103,13 +140,28 @@ router.get('/:id', (req, res) => userController.findOne(req, res));
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Nome do usuário
  *               email:
  *                 type: string
+ *                 format: email
+ *                 description: Email do usuário
  *               password:
  *                 type: string
+ *                 format: password
+ *                 description: Nova senha do usuário
  *     responses:
  *       200:
- *         description: Usuário atualizado
+ *         description: Usuário atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Dados inválidos
+ *       404:
+ *         description: Usuário não encontrado
+ *       409:
+ *         description: Email já cadastrado por outro usuário
  */
 router.put('/:id', (req, res) => userController.update(req, res));
 
@@ -125,9 +177,14 @@ router.put('/:id', (req, res) => userController.update(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *         description: ID do usuário
  *     responses:
  *       204:
- *         description: Usuário deletado
+ *         description: Usuário deletado com sucesso
+ *       404:
+ *         description: Usuário não encontrado
+ *       400:
+ *         description: Não é possível deletar usuário com ingressos associados
  */
 router.delete('/:id', (req, res) => userController.delete(req, res));
 
