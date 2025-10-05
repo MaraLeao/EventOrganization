@@ -4,6 +4,7 @@ export const createTicketSchema = z.object({
   userId: z.string().uuid('ID do usuário deve ser um UUID válido'),
   eventId: z.string().uuid('ID do evento deve ser um UUID válido'),
   price: z.number().positive('Preço deve ser um número positivo'),
+  isUsed: z.boolean()
 });
 
 export const updateTicketSchema = z.object({

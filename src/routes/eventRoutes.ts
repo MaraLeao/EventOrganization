@@ -21,8 +21,7 @@ const eventController = new EventController();
  *               - description
  *               - date
  *               - location
- *               - price
- *               - capacity
+ *               - maxCapacity
  *             properties:
  *               title:
  *                 type: string
@@ -33,9 +32,7 @@ const eventController = new EventController();
  *                 format: date-time
  *               location:
  *                 type: string
- *               price:
- *                 type: number
- *               capacity:
+ *               maxCapacity:
  *                 type: integer
  *     responses:
  *       201:

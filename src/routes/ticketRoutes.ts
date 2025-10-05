@@ -19,13 +19,17 @@ const ticketController = new TicketController();
  *             required:
  *               - userId
  *               - eventId
+ *               - price
+ *               - isUsed
  *             properties:
  *               userId:
  *                 type: string
  *               eventId:
  *                 type: string
- *               status:
- *                 type: string
+ *               price:
+ *                 type: number
+ *               isUsed:
+ *                 type: boolean
  *     responses:
  *       201:
  *         description: Ticket criado
