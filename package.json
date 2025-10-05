@@ -1,0 +1,29 @@
+{
+  "name": "eventorganization",
+  "version": "1.0.0",
+  "description": "Api event organization2",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaraLeao/EventOrganization.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MaraLeao/EventOrganization/issues"
+  },
+  "homepage": "https://github.com/MaraLeao/EventOrganization#readme",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "prisma": "^6.16.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
