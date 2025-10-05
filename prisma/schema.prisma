@@ -1,14 +1,11 @@
-// Criar banco de dados
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 
 model User {
   id        String    @id @default(uuid())
@@ -18,8 +15,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   tickets   Ticket[]
-  }
-
+}
 
 model Event {
   id           String     @id @default(uuid())
@@ -31,22 +27,18 @@ model Event {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   tickets      Ticket[]
-  }
-
+}
 
 model Ticket {
   id        String    @id @default(uuid())
-
-
   userId    String
   eventId   String
   price     Decimal   @db.Decimal(10, 2)
   isUsed    Boolean   @default(false)
   createdAt DateTime  @default(now())
-
-
+  
   user      User      @relation(fields: [userId], references: [id])
   event     Event     @relation(fields: [eventId], references: [id])
 
-  @@unique([userId, eventId]) 
-  }
+  @@unique([userId, eventId])
+}
