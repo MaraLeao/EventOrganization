@@ -26,7 +26,7 @@ export const updateTicketSchema = z
       .boolean({ message: 'isUsed deve ser verdadeiro ou falso' })
       .optional(),
   })
-  .refine((data) => Object.keys(data).length > 0, {
+  .refine((data: {}) => Object.keys(data).length > 0, {
     message: 'Pelo menos um campo deve ser fornecido para atualização',
   });
 
