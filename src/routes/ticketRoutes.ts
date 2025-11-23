@@ -50,26 +50,50 @@ const ticketController = new TicketController();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - userId
- *               - eventId
- *               - price
- *             properties:
- *               userId:
- *                 type: string
- *                 format: uuid
- *                 description: ID do usuário
- *                 example: 550e8400-e29b-41d4-a716-446655440000
- *               eventId:
- *                 type: string
- *                 format: uuid
- *                 description: ID do evento
- *                 example: 660e8400-e29b-41d4-a716-446655440000
- *               price:
- *                 type: number
- *                 description: Preço do ingresso
- *                 example: 150.00
+ *             oneOf:
+ *               - type: object
+ *                 description: Fluxo administrativo para criar ingressos para um usuário específico
+ *                 required:
+ *                   - userId
+ *                   - eventId
+ *                   - ticketTypeId
+ *                 properties:
+ *                   userId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: ID do usuário
+ *                     example: 550e8400-e29b-41d4-a716-446655440000
+ *                   eventId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: ID do evento
+ *                     example: 660e8400-e29b-41d4-a716-446655440000
+ *                   ticketTypeId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: ID do tipo de ingresso
+ *                     example: 770e8400-e29b-41d4-a716-446655440000
+ *               - type: object
+ *                 description: Fluxo do usuário autenticado para comprar ingressos
+ *                 required:
+ *                   - eventId
+ *                   - ticketTypeId
+ *                   - quantity
+ *                 properties:
+ *                   eventId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: ID do evento
+ *                     example: 660e8400-e29b-41d4-a716-446655440000
+ *                   ticketTypeId:
+ *                     type: string
+ *                     format: uuid
+ *                     description: ID do tipo de ingresso
+ *                   quantity:
+ *                     type: integer
+ *                     description: Quantidade de ingressos desejada
+ *                     minimum: 1
+ *                     maximum: 20
  *     responses:
  *       201:
  *         description: Ticket criado com sucesso

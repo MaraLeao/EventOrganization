@@ -38,6 +38,29 @@ const eventController = new EventController();
  *           type: integer
  *           description: Capacidade máxima de participantes
  *           example: 5000
+ *         ticketTypes:
+ *           type: array
+ *           description: Configuração dos tipos de ingressos
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID do tipo de ingresso (presente apenas em atualizações)
+ *               name:
+ *                 type: string
+ *                 description: Nome do tipo de ingresso
+ *                 example: Pista
+ *               price:
+ *                 type: number
+ *                 format: decimal
+ *                 description: Preço em Reais
+ *                 example: 150.00
+ *               quantity:
+ *                 type: integer
+ *                 description: Quantidade disponível para o tipo
+ *                 example: 200
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -66,6 +89,7 @@ const eventController = new EventController();
  *               - date
  *               - location
  *               - maxCapacity
+ *               - ticketTypes
  *             properties:
  *               title:
  *                 type: string
@@ -84,6 +108,29 @@ const eventController = new EventController();
  *                 type: number
  *                 description: Quantidade máxima de pessoas
  *                 example: 5000
+ *               ticketTypes:
+ *                 type: array
+ *                 description: Tipos de ingresso disponíveis
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - name
+ *                     - price
+ *                     - quantity
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                       description: Nome do tipo de ingresso
+ *                       example: VIP
+ *                     price:
+ *                       type: number
+ *                       format: decimal
+ *                       description: Preço em Reais
+ *                       example: 250.00
+ *                     quantity:
+ *                       type: integer
+ *                       description: Quantidade disponível para o tipo
+ *                       example: 100
  *     responses:
  *       201:
  *         description: Evento criado com sucesso
@@ -178,6 +225,26 @@ router.get('/:id', (req, res) => eventController.findOne(req, res));
  *                 type: number
  *                 description: Quantidade máxima de pessoas
  *                 example: 5000
+ *               ticketTypes:
+ *                 type: array
+ *                 description: Atualização dos tipos de ingresso
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                       description: ID do tipo (necessário para atualizar um tipo existente)
+ *                     name:
+ *                       type: string
+ *                       description: Nome do tipo
+ *                     price:
+ *                       type: number
+ *                       format: decimal
+ *                       description: Preço em Reais
+ *                     quantity:
+ *                       type: integer
+ *                       description: Quantidade disponível
  *     responses:
  *       200:
  *         description: Evento atualizado com sucesso
