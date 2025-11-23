@@ -7,17 +7,18 @@ export const createTicketSchema = z.object({
   eventId: z
     .string({ message: 'ID do evento é obrigatório' })
     .min(1, 'ID do evento não pode ser vazio'),
-  price: z
-    .number({ message: 'Preço é obrigatório' })
-    .positive('Preço deve ser positivo')
-    .multipleOf(0.01, 'Preço deve ter no máximo 2 casas decimais')
-    .max(999999.99, 'Preço máximo excedido'),
+  ticketTypeId: z
+    .string({ message: 'ID do tipo de ingresso é obrigatório' })
+    .min(1, 'ID do tipo de ingresso não pode ser vazio'),
 });
 
 export const purchaseTicketSchema = z.object({
   eventId: z
     .string({ message: 'ID do evento é obrigatório' })
     .min(1, 'ID do evento não pode ser vazio'),
+  ticketTypeId: z
+    .string({ message: 'ID do tipo de ingresso é obrigatório' })
+    .min(1, 'ID do tipo de ingresso não pode ser vazio'),
   quantity: z
     .number()
     .int('Quantidade deve ser inteira')
@@ -31,7 +32,7 @@ export const updateTicketSchema = z
   .object({
     price: z
       .number()
-      .positive('Preço deve ser positivo')
+      .min(0, 'Preço não pode ser negativo')
       .multipleOf(0.01, 'Preço deve ter no máximo 2 casas decimais')
       .max(999999.99, 'Preço máximo excedido')
       .optional(),

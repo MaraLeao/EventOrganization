@@ -3,10 +3,11 @@ import { createTicketSchema, updateTicketSchema } from '../schemas/ticketSchema.
 import type { z } from 'zod';
 
 type CreateTicketInput = z.infer<typeof createTicketSchema>;
+type TicketCreationData = CreateTicketInput & { price: number };
 type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 
 export class TicketModel {
-  async create(data: CreateTicketInput) {
+  async create(data: TicketCreationData) {
     return await prisma.ticket.create({
       data,
       include: {
@@ -18,6 +19,7 @@ export class TicketModel {
           },
         },
         event: true,
+        ticketType: true,
       },
     });
   }
@@ -33,6 +35,7 @@ export class TicketModel {
           },
         },
         event: true,
+        ticketType: true,
       },
     });
   }
@@ -49,6 +52,7 @@ export class TicketModel {
           },
         },
         event: true,
+        ticketType: true,
       },
     });
   }
@@ -65,6 +69,7 @@ export class TicketModel {
           },
         },
         event: true,
+        ticketType: true,
       },
     });
   }
@@ -82,11 +87,30 @@ export class TicketModel {
           },
         },
         event: true,
+        ticketType: true,
       },
     });
   }
 
   async delete(id: string) {
     return await prisma.ticket.delete({ where: { id } });
+  }
+
+  async markAsUsed(id: string) {
+    return await prisma.ticket.update({
+      where: { id },
+      data: { isUsed: true },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        event: true,
+        ticketType: true,
+      },
+    });
   }
 }

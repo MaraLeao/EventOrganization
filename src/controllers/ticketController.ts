@@ -1,10 +1,12 @@
 import type { Response } from 'express';
+import crypto from 'crypto';
 import { TicketModel } from '../models/ticketModel.js';
 import { createTicketSchema, purchaseTicketSchema, updateTicketSchema } from '../schemas/ticketSchema.js';
 import type { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 import { prisma } from '../config/database.js';
 
 const ticketModel = new TicketModel();
+const generateUsageCode = () => crypto.randomBytes(4).toString('hex').toUpperCase();
 
 export class TicketController {
   async create(req: AuthenticatedRequest, res: Response) {
@@ -15,18 +17,47 @@ export class TicketController {
 
       if (req.user.role === 'ADMIN') {
         const validatedData = createTicketSchema.parse(req.body);
-        const ticket = await ticketModel.create(validatedData);
+        const ticketType = await prisma.ticketType.findFirst({
+          where: {
+            id: validatedData.ticketTypeId,
+            eventId: validatedData.eventId,
+          },
+        });
+
+        if (!ticketType) {
+          return res.status(404).json({ error: 'Tipo de ingresso não encontrado' });
+        }
+
+        const ticket = await ticketModel.create({
+          ...validatedData,
+          price: Number(ticketType.price),
+        });
         return res.status(201).json(ticket);
       }
 
-      const { eventId, quantity } = purchaseTicketSchema.parse(req.body);
-      const event = await prisma.event.findUnique({
-        where: { id: eventId },
-        select: { price: true },
+      const { eventId, ticketTypeId, quantity } = purchaseTicketSchema.parse(req.body);
+      const ticketType = await prisma.ticketType.findFirst({
+        where: {
+          id: ticketTypeId,
+          eventId,
+        },
+        select: {
+          id: true,
+          price: true,
+          quantity: true,
+        },
       });
 
-      if (!event) {
-        return res.status(404).json({ error: 'Evento não encontrado' });
+      if (!ticketType) {
+        return res.status(404).json({ error: 'Tipo de ingresso não encontrado' });
+      }
+
+      const soldCount = await prisma.ticket.count({
+        where: { ticketTypeId },
+      });
+
+      if (soldCount + quantity > ticketType.quantity) {
+        return res.status(400).json({ error: 'Quantidade indisponível para este tipo de ingresso' });
       }
 
       const tickets = [];
@@ -34,7 +65,8 @@ export class TicketController {
         const ticket = await ticketModel.create({
           userId: req.user.id,
           eventId,
-          price: Number(event.price),
+          ticketTypeId,
+          price: Number(ticketType.price),
         });
         tickets.push(ticket);
       }
@@ -100,6 +132,34 @@ export class TicketController {
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  }
+
+  async useTicket(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Não autorizado' });
+      }
+
+      const ticket = await ticketModel.findById(req.params.id);
+
+      if (!ticket) {
+        return res.status(404).json({ error: 'Ticket não encontrado' });
+      }
+
+      if (req.user.role !== 'ADMIN' && ticket.user?.id !== req.user.id) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+
+      if (ticket.isUsed) {
+        return res.status(400).json({ error: 'Ticket já foi utilizado' });
+      }
+
+      const updatedTicket = await ticketModel.markAsUsed(req.params.id);
+      const code = generateUsageCode();
+      res.json({ ticket: updatedTicket, code });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   }
 }

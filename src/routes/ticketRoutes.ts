@@ -148,6 +148,8 @@ router.get('/', (req, res) => ticketController.findAll(req, res));
  */
 router.get('/:id', (req, res) => ticketController.findOne(req, res));
 
+router.post('/:id/use', (req, res) => ticketController.useTicket(req, res));
+
 /**
  * @swagger
  * /api/tickets/{id}:

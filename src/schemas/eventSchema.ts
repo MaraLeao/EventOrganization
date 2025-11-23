@@ -1,5 +1,22 @@
 import { z } from 'zod';
 
+const ticketTypeSchema = z.object({
+  name: z
+    .string({ message: 'Nome do tipo é obrigatório' })
+    .min(2, 'Nome do tipo deve ter ao menos 2 caracteres')
+    .max(100, 'Nome do tipo deve ter no máximo 100 caracteres')
+    .trim(),
+  price: z
+    .number({ message: 'Preço é obrigatório' })
+    .min(0, 'Preço não pode ser negativo')
+    .max(999999.99, 'Preço máximo excedido'),
+  quantity: z
+    .number({ message: 'Quantidade é obrigatória' })
+    .int('Quantidade deve ser um número inteiro')
+    .positive('Quantidade deve ser positiva')
+    .max(1000000, 'Quantidade máxima excedida'),
+});
+
 export const createEventSchema = z.object({
   title: z
     .string({ message: 'Título é obrigatório' })
@@ -29,10 +46,10 @@ export const createEventSchema = z.object({
     .positive('Capacidade deve ser positiva')
     .min(1, 'Capacidade deve ser no mínimo 1')
     .max(1000000, 'Capacidade máxima excedida'),
-  price: z
-    .number({ message: 'Preço é obrigatório' })
-    .positive('Preço deve ser positivo')
-    .max(999999.99, 'Preço máximo excedido'),
+  ticketTypes: z
+    .array(ticketTypeSchema)
+    .min(1, 'Defina pelo menos um tipo de ingresso')
+    .max(50, 'Número máximo de tipos excedido'),
 });
 
 export const updateEventSchema = z
@@ -69,10 +86,13 @@ export const updateEventSchema = z
       .min(1, 'Capacidade deve ser no mínimo 1')
       .max(1000000, 'Capacidade máxima excedida')
       .optional(),
-    price: z
-      .number()
-      .positive('Preço deve ser positivo')
-      .max(999999.99, 'Preço máximo excedido')
+    ticketTypes: z
+      .array(
+        ticketTypeSchema.partial().extend({
+          id: z.string().uuid().optional(),
+        }),
+      )
+      .max(50, 'Número máximo de tipos excedido')
       .optional(),
   })
   .refine((data: {}) => Object.keys(data).length > 0, {

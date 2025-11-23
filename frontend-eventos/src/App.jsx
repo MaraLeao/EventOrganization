@@ -29,8 +29,68 @@ export default function EventsApp() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
   const [accountFeedback, setAccountFeedback] = useState({ type: '', message: '' });
+  const [usageCode, setUsageCode] = useState('');
 
   const isAdmin = currentUser?.role === 'ADMIN';
+
+  const emptyTicketType = { name: '', price: '', quantity: '' };
+
+  const ensureTicketTypesArray = (types) => {
+    if (!types || types.length === 0) {
+      return [emptyTicketType];
+    }
+    return types.map((type) => ({
+      id: type.id,
+      name: type.name ?? '',
+      price:
+        type.price !== undefined && type.price !== null && type.price !== ''
+          ? Number(type.price)
+          : '',
+      quantity:
+        type.quantity !== undefined && type.quantity !== null && type.quantity !== ''
+          ? Number(type.quantity)
+          : '',
+    }));
+  };
+
+  const handleTicketTypeFieldChange = (index, field, value) => {
+    setFormData((prev) => {
+      const ticketTypes = ensureTicketTypesArray(prev.ticketTypes);
+      ticketTypes[index] = { ...ticketTypes[index], [field]: value };
+      return { ...prev, ticketTypes };
+    });
+  };
+
+  const addTicketTypeRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      ticketTypes: [...ensureTicketTypesArray(prev.ticketTypes), emptyTicketType],
+    }));
+  };
+
+  const removeTicketTypeRow = (index) => {
+    setFormData((prev) => {
+      const ticketTypes = ensureTicketTypesArray(prev.ticketTypes);
+      if (ticketTypes.length === 1) return prev;
+      ticketTypes.splice(index, 1);
+      return { ...prev, ticketTypes };
+    });
+  };
+
+  const getTicketTypeAvailability = (type) => {
+    if (!type) return 0;
+    const sold = type._count?.tickets ?? 0;
+    const qty = Number(type.quantity ?? 0);
+    return Math.max(qty - sold, 0);
+  };
+
+  const getSelectedTicketType = () => {
+    if (!selectedEvent || !selectedEvent.ticketTypes?.length) {
+      return null;
+    }
+    const ticketTypeId = formData.ticketTypeId || selectedEvent.ticketTypes[0]?.id;
+    return selectedEvent.ticketTypes.find((type) => type.id === ticketTypeId) || null;
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -55,6 +115,10 @@ export default function EventsApp() {
       setActiveTab('events');
     }
   }, [isAdmin, activeTab, token]);
+
+  useEffect(() => {
+    setSearchTerm('');
+  }, [activeTab]);
 
   const logout = () => {
     setToken(null);
@@ -135,10 +199,45 @@ export default function EventsApp() {
   const openModal = (type, item = null, options = {}) => {
     setModalType(type);
     setEditingItem(item);
+    setUsageCode('');
+    setFormError('');
+
+    if (type === 'event') {
+      const ticketTypes = item
+        ? ensureTicketTypesArray(item.ticketTypes)
+        : ensureTicketTypesArray();
+      setSelectedEvent(null);
+      setFormData(
+        item
+          ? {
+              ...item,
+              maxCapacity: item.maxCapacity,
+              ticketTypes,
+            }
+          : {
+              title: '',
+              description: '',
+              date: '',
+              location: '',
+              maxCapacity: '',
+              ticketTypes,
+            },
+      );
+      setShowModal(true);
+      return;
+    }
+
     if (options.event) {
-      setSelectedEvent(options.event);
+      const event = options.event;
+      const availableTypes = event.ticketTypes || [];
+      const defaultType =
+        availableTypes.find((typeOption) => getTicketTypeAvailability(typeOption) > 0) ||
+        availableTypes[0] ||
+        null;
+      setSelectedEvent(event);
       setFormData({
-        eventId: options.event.id,
+        eventId: event.id,
+        ticketTypeId: defaultType?.id || '',
         quantity: 1,
       });
     } else if (item) {
@@ -148,6 +247,7 @@ export default function EventsApp() {
       setSelectedEvent(null);
       setFormData({});
     }
+
     setShowModal(true);
   };
 
@@ -157,6 +257,7 @@ export default function EventsApp() {
     setFormData({});
     setFormError('');
     setSelectedEvent(null);
+    setUsageCode('');
   };
 
   const handleSubmit = async (e) => {
@@ -171,14 +272,42 @@ export default function EventsApp() {
       const url = editingItem ? `${API_URL}/${endpoint}/${editingItem.id}` : `${API_URL}/${endpoint}`;
       let bodyData = formData;
 
-      if (modalType === 'ticket' && !isAdmin) {
+      if (modalType === 'event') {
+        const ticketTypes = ensureTicketTypesArray(formData.ticketTypes).map((type) => ({
+          name: type.name,
+          price: Number(type.price),
+          quantity: Number(type.quantity),
+        }));
+
+        if (ticketTypes.some((type) => !type.name || Number.isNaN(type.price) || Number.isNaN(type.quantity))) {
+          throw new Error('Preencha todos os tipos de ingresso corretamente');
+        }
+
+        bodyData = {
+          title: formData.title,
+          description: formData.description,
+          date: formData.date,
+          location: formData.location,
+          maxCapacity: Number(formData.maxCapacity),
+          ticketTypes,
+        };
+      } else if (modalType === 'ticket' && !isAdmin) {
         const eventId = formData.eventId || selectedEvent?.id;
         if (!eventId) {
           throw new Error('Evento inválido para compra');
         }
+        const ticketTypeId = formData.ticketTypeId;
+        if (!ticketTypeId) {
+          throw new Error('Selecione um tipo de ingresso');
+        }
         bodyData = {
           eventId,
+          ticketTypeId,
           quantity: Number(formData.quantity) > 0 ? Number(formData.quantity) : 1,
+        };
+      } else if (modalType === 'ticket' && isAdmin) {
+        bodyData = {
+          ...formData,
         };
       }
 
@@ -293,6 +422,11 @@ export default function EventsApp() {
       setAuthError('Faça login para comprar ingressos.');
       return;
     }
+    const availableType = event.ticketTypes?.find(type => getTicketTypeAvailability(type) > 0);
+    if (!availableType) {
+      setFormError('Nenhum ingresso disponível para este evento no momento.');
+      return;
+    }
     openModal('ticket', null, { event });
   };
 
@@ -339,6 +473,36 @@ export default function EventsApp() {
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
       setAccountFeedback({ type: 'error', message: error.message || 'Erro ao atualizar perfil' });
+    }
+  };
+
+  const handleUseTicket = async () => {
+    if (!token || !editingItem) {
+      return handleUnauthorized();
+    }
+    try {
+      setFormError('');
+      setUsageCode('');
+      const response = await fetch(`${API_URL}/tickets/${editingItem.id}/use`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        throw new Error(data?.error || 'Erro ao usar ingresso');
+      }
+      setUsageCode(data.code);
+      setEditingItem(data.ticket);
+      await loadData();
+    } catch (error) {
+      console.error('Erro ao usar ingresso:', error);
+      setFormError(error.message || 'Erro ao usar ingresso');
     }
   };
 
@@ -389,7 +553,7 @@ export default function EventsApp() {
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-105 transition-transform">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-emerald-100 text-sm font-medium mb-1">Ingressos Vendidos</p>
+              <p className="text-emerald-100 text-sm font-medium mb-1">Ingressos Comprados</p>
               <h3 className="text-3xl font-bold">{stats.totalTickets}</h3>
             </div>
             <div className="bg-white bg-opacity-20 p-3 rounded-xl">
@@ -442,7 +606,16 @@ export default function EventsApp() {
       </div>
 
       <div className="grid gap-4">
-        {users.map(user => (
+        {users
+          .filter(user => {
+            if (!searchTerm.trim()) return true;
+            const term = searchTerm.toLowerCase();
+            return (
+              user.name.toLowerCase().includes(term) ||
+              user.email.toLowerCase().includes(term)
+            );
+          })
+          .map(user => (
           <div key={user.id} className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-xl transition-shadow overflow-hidden">
             <div className="p-6">
               <div className="flex justify-between items-start">
@@ -484,7 +657,22 @@ export default function EventsApp() {
     </div>
   );
 
-  const renderEvents = () => (
+  const renderEvents = () => {
+    const filteredEvents = events.filter(event => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const ticketTypeMatch = event.ticketTypes?.some(type =>
+        type.name?.toLowerCase().includes(term),
+      );
+      return (
+        event.title.toLowerCase().includes(term) ||
+        (event.location?.toLowerCase().includes(term) ?? false) ||
+        (event.description?.toLowerCase().includes(term) ?? false) ||
+        ticketTypeMatch
+      );
+    });
+
+    return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -515,7 +703,7 @@ export default function EventsApp() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {events.map(event => (
+        {filteredEvents.map(event => (
           <div key={event.id} className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-2xl transition-all overflow-hidden group">
             <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
             <div className="p-6">
@@ -541,7 +729,12 @@ export default function EventsApp() {
                   ) : (
                     <button
                       onClick={() => handleBuyTicket(event)}
-                      className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition shadow"
+                      disabled={!event.ticketTypes?.some(type => getTicketTypeAvailability(type) > 0)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition shadow ${
+                        event.ticketTypes?.some(type => getTicketTypeAvailability(type) > 0)
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
                       <Ticket size={16} /> Comprar ingresso
                     </button>
@@ -567,13 +760,30 @@ export default function EventsApp() {
                   <span>{event.location}</span>
                 </div>
 
-                <div className="flex items-center gap-3 text-gray-700 bg-gray-50 p-3 rounded-lg">
-                  <Ticket className="text-emerald-600" size={20} />
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase">Valor do ingresso</p>
-                    <p className="text-lg font-semibold text-emerald-600">R$ {Number(event.price).toFixed(2)}</p>
+                {event.ticketTypes?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">Tipos de ingresso</p>
+                    <div className="space-y-2">
+                      {event.ticketTypes.map(type => {
+                        const remaining = getTicketTypeAvailability(type);
+                        return (
+                          <div
+                            key={type.id}
+                            className="flex items-center justify-between px-3 py-2 rounded-lg border border-gray-100 bg-white"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-800">{type.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {remaining > 0 ? `${remaining} disponíveis` : 'Esgotado'}
+                              </p>
+                            </div>
+                            <p className="font-semibold text-emerald-600">R$ {Number(type.price).toFixed(2)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-emerald-50 p-3 rounded-lg">
@@ -592,8 +802,25 @@ export default function EventsApp() {
       </div>
     </div>
   );
+  };
 
-  const renderTickets = (allowManage = false) => (
+  const renderTickets = (allowManage = false) => {
+    const filteredTickets = tickets.filter(ticket => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      const eventTitle = ticket.event?.title?.toLowerCase() ?? '';
+      const userName = ticket.user?.name?.toLowerCase() ?? '';
+      const userEmail = ticket.user?.email?.toLowerCase() ?? '';
+      const ticketTypeName = ticket.ticketType?.name?.toLowerCase() ?? '';
+      return (
+        eventTitle.includes(term) ||
+        userName.includes(term) ||
+        userEmail.includes(term) ||
+        ticketTypeName.includes(term)
+      );
+    });
+
+    return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -626,8 +853,14 @@ export default function EventsApp() {
       </div>
 
       <div className="grid gap-4">
-        {tickets.map(ticket => (
-          <div key={ticket.id} className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-xl transition-shadow overflow-hidden">
+        {filteredTickets.map(ticket => (
+          <div
+            key={ticket.id}
+            className={`bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-xl transition-shadow overflow-hidden ${
+              allowManage ? '' : 'cursor-pointer'
+            }`}
+            onClick={!allowManage ? () => openModal('ticketView', ticket) : undefined}
+          >
             <div className="flex">
               <div className={`w-2 ${ticket.isUsed ? 'bg-gray-400' : 'bg-gradient-to-b from-emerald-400 to-emerald-600'}`}></div>
               <div className="flex-1 p-6">
@@ -689,6 +922,7 @@ export default function EventsApp() {
       </div>
     </div>
   );
+  };
 
   const renderAuth = () => (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-6">
@@ -841,12 +1075,25 @@ export default function EventsApp() {
       ];
 
   const renderModal = () => {
+    const ticketTypesOptions = selectedEvent?.ticketTypes || [];
+    const selectedTicketType = selectedEvent ? getSelectedTicketType() : null;
+    const maxQuantityForSelectedType = selectedTicketType
+      ? Math.min(20, getTicketTypeAvailability(selectedTicketType))
+      : 0;
+    const isSelectedTypeSoldOut = selectedTicketType ? maxQuantityForSelectedType === 0 : false;
+    const ticketTotalValue = (
+      (formData.quantity || 1) *
+      (selectedTicketType?.price ? Number(selectedTicketType.price) : 0)
+    ).toFixed(2);
+    const isTicketPurchaseDisabled =
+      modalType === 'ticket' && !isAdmin && (isSelectedTypeSoldOut || !formData.ticketTypeId);
+
     if (!showModal) return null;
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl transform transition-all">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] shadow-2xl transform transition-all flex flex-col p-6">
+          <div className="flex justify-between items-center mb-6 pr-2">
             <h3 className="text-2xl font-bold text-gray-800">
               {editingItem ? 'Editar' : 'Novo'} {modalType === 'user' ? 'Usuário' : modalType === 'event' ? 'Evento' : 'Ingresso'}
             </h3>
@@ -858,7 +1105,87 @@ export default function EventsApp() {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {modalType === 'ticketView' && editingItem ? (
+            <div className="space-y-6 overflow-y-auto pr-1 flex-1">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">Evento</p>
+                <h3 className="text-2xl font-bold text-gray-800">{editingItem.event?.title}</h3>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Calendar size={16} />
+                  <span>
+                    {new Date(editingItem.event?.date).toLocaleString('pt-BR', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <MapPin size={16} />
+                  <span>{editingItem.event?.location}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Preço</p>
+                  <p className="text-xl font-semibold text-emerald-600">R$ {Number(editingItem.price).toFixed(2)}</p>
+                </div>
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Status</p>
+                  <p className={`text-xl font-semibold ${editingItem.isUsed ? 'text-gray-600' : 'text-emerald-600'}`}>
+                    {editingItem.isUsed ? 'Usado' : 'Disponível'}
+                  </p>
+                </div>
+              </div>
+
+              {editingItem.ticketType && (
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <p className="text-xs text-gray-500 uppercase">Tipo de ingresso</p>
+                  <p className="text-lg font-semibold text-gray-800">{editingItem.ticketType.name}</p>
+                </div>
+              )}
+
+              {usageCode && (
+                <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 text-center">
+                  <p className="text-sm text-purple-600">Código de validação</p>
+                  <p className="text-2xl font-mono font-bold text-purple-700 tracking-widest mt-1">{usageCode}</p>
+                </div>
+              )}
+
+              {formError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-2 text-sm">
+                  {formError}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleUseTicket}
+                  disabled={editingItem.isUsed}
+                  className={`w-full py-3 rounded-lg font-semibold transition ${
+                    editingItem.isUsed
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow'
+                  }`}
+                >
+                  {editingItem.isUsed ? 'Ingresso já utilizado' : 'Usar ingresso'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="w-full py-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100 font-medium transition"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          ) : (
+
+          <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1 flex-1">
             {formError && (
               <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-2 text-sm">
                 {formError}
@@ -959,17 +1286,79 @@ export default function EventsApp() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Preço do ingresso (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.price ?? ''}
-                    onChange={e => setFormData({...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value)})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                <div className="border border-gray-200 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">Tipos de ingresso</p>
+                      <p className="text-xs text-gray-500">Defina os valores e quantidades disponíveis</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addTicketTypeRow}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                    >
+                      + Adicionar tipo
+                    </button>
+                  </div>
+                  {ensureTicketTypesArray(formData.ticketTypes).map((type, index, array) => (
+                    <div
+                      key={type.id || index}
+                      className="grid md:grid-cols-3 gap-3 border border-gray-100 rounded-lg p-3 bg-gray-50"
+                    >
+                      <div className="md:col-span-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Nome</label>
+                        <input
+                          type="text"
+                          value={type.name}
+                          onChange={e => handleTicketTypeFieldChange(index, 'name', e.target.value)}
+                          placeholder="Ex: Pista"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Preço (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={type.price}
+                          onChange={e =>
+                            handleTicketTypeFieldChange(
+                              index,
+                              'price',
+                              e.target.value === '' ? '' : parseFloat(e.target.value),
+                            )
+                          }
+                          placeholder="0.00"
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Quantidade</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={type.quantity}
+                            onChange={e => handleTicketTypeFieldChange(index, 'quantity', parseInt(e.target.value, 10) || 0)}
+                            placeholder="0"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        {array.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTicketTypeRow(index)}
+                            className="self-end text-sm text-red-600 hover:text-red-700 px-2 py-1"
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )}
@@ -1005,18 +1394,47 @@ export default function EventsApp() {
                   </>
                 )}
                 {!isAdmin && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Evento selecionado</p>
-                    <p className="font-semibold text-gray-800">
-                      {selectedEvent?.title || 'Selecione um evento para comprar'}
-                    </p>
-                    {selectedEvent && (
-                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                        <MapPin size={14} />
-                        {selectedEvent.location}
+                  <>
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-500 mb-1">Evento selecionado</p>
+                      <p className="font-semibold text-gray-800">
+                        {selectedEvent?.title || 'Selecione um evento para comprar'}
                       </p>
-                    )}
-                  </div>
+                      {selectedEvent && (
+                        <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                          <MapPin size={14} />
+                          {selectedEvent.location}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Tipo de ingresso</label>
+                      <select
+                        value={formData.ticketTypeId || ''}
+                        onChange={e =>
+                          setFormData({
+                            ...formData,
+                            ticketTypeId: e.target.value,
+                            quantity: 1,
+                          })
+                        }
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      >
+                        {ticketTypesOptions.map(type => (
+                          <option key={type.id} value={type.id}>
+                            {type.name} - R$ {Number(type.price).toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedTicketType && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {getTicketTypeAvailability(selectedTicketType) > 0
+                            ? `${getTicketTypeAvailability(selectedTicketType)} disponíveis`
+                            : 'Esgotado'}
+                        </p>
+                      )}
+                    </div>
+                  </>
                 )}
                 {isAdmin ? (
                   <div>
@@ -1036,7 +1454,7 @@ export default function EventsApp() {
                     <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
                       <p className="text-sm text-gray-500">Valor unitário</p>
                       <p className="text-2xl font-bold text-emerald-600">
-                        R$ {selectedEvent ? Number(selectedEvent.price).toFixed(2) : '0,00'}
+                        R$ {selectedTicketType ? Number(selectedTicketType.price).toFixed(2) : '0,00'}
                       </p>
                     </div>
                     <div>
@@ -1044,7 +1462,8 @@ export default function EventsApp() {
                       <input
                         type="number"
                         min="1"
-                        max="20"
+                        max={Math.max(1, maxQuantityForSelectedType || 1)}
+                        disabled={isSelectedTypeSoldOut}
                         value={formData.quantity || 1}
                         onChange={e => {
                           const value = parseInt(e.target.value, 10);
@@ -1053,13 +1472,18 @@ export default function EventsApp() {
                             quantity: Number.isNaN(value) ? 1 : value,
                           });
                         }}
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent ${
+                          isSelectedTypeSoldOut ? 'bg-gray-100 cursor-not-allowed' : 'border-gray-300'
+                        }`}
                         required
                       />
-                      {selectedEvent && (
+                      {selectedTicketType && (
                         <p className="text-sm text-gray-500 mt-2">
-                          Total: R$ {((formData.quantity || 1) * Number(selectedEvent.price || 0)).toFixed(2)}
+                          Total: R$ {ticketTotalValue}
                         </p>
+                      )}
+                      {isSelectedTypeSoldOut && (
+                        <p className="text-sm text-red-500 mt-1">Este tipo de ingresso está esgotado.</p>
                       )}
                     </div>
                   </>
@@ -1081,9 +1505,14 @@ export default function EventsApp() {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium shadow-lg transition-all transform hover:scale-105"
+                disabled={isTicketPurchaseDisabled}
+                className={`flex-1 py-3 rounded-lg font-medium shadow-lg transition-all ${
+                  isTicketPurchaseDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 transform hover:scale-105'
+                }`}
               >
-                {editingItem ? 'Atualizar' : 'Criar'}
+                {editingItem ? 'Atualizar' : modalType === 'ticket' && !isAdmin ? 'Comprar' : 'Criar'}
               </button>
               <button
                 type="button"
@@ -1094,6 +1523,7 @@ export default function EventsApp() {
               </button>
             </div>
           </form>
+          )}
         </div>
       </div>
     );
