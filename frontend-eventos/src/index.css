@@ -41,7 +41,9 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #f0f0f0;
+  color: #213547;
+  color-scheme: light;
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -53,6 +55,17 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+input,
+textarea,
+select {
+  background-color: #ffffff;
+  color: #213547;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  color-scheme: light;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -60,8 +73,5 @@ button:focus-visible {
   }
   a:hover {
     color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
   }
 }
