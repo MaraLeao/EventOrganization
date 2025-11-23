@@ -29,24 +29,6 @@ const userController = new UserController();
  *           type: string
  *           format: date-time
  *           description: Data da última atualização
- *     UserInput:
- *       type: object
- *       required:
- *         - name
- *         - email
- *         - password
- *       properties:
- *         name:
- *           type: string
- *           description: Nome do usuário
- *         email:
- *           type: string
- *           format: email
- *           description: Email único do usuário
- *         password:
- *           type: string
- *           format: password
- *           description: Senha do usuário
  */
 
 /**
@@ -60,7 +42,23 @@ const userController = new UserController();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserInput'
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Nome do usuário
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email único do usuário
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: Senha do usuário
  *     responses:
  *       201:
  *         description: Usuário criado com sucesso

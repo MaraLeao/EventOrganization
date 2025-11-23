@@ -6,6 +6,49 @@ const eventController = new EventController();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     Event:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: ID único do evento
+ *         title:
+ *           type: string
+ *           description: Título do evento
+ *           example: Show de Rock 2025
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Descrição detalhada do evento
+ *           example: Um evento incrível com as melhores bandas
+ *         date:
+ *           type: string
+ *           format: date-time
+ *           description: Data e hora do evento
+ *           example: 2025-12-31T20:00:00Z
+ *         location:
+ *           type: string
+ *           description: Local do evento
+ *           example: Estádio Central, São Paulo
+ *         maxCapacity:
+ *           type: integer
+ *           description: Capacidade máxima de participantes
+ *           example: 5000
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Data de criação
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Data da última atualização
+ */
+
+/**
+ * @swagger
  * /api/events:
  *   post:
  *     summary: Criar novo evento
@@ -18,32 +61,35 @@ const eventController = new EventController();
  *             type: object
  *             required:
  *               - title
+ *               - description
  *               - date
  *               - location
  *               - maxCapacity
  *             properties:
  *               title:
  *                 type: string
- *                 description: Título do evento
+ *                 description: Titulo do evento
  *               description:
  *                 type: string
- *                 description: Descrição do evento (opcional)
+ *                 description: Descrição do evento
  *               date:
  *                 type: string
- *                 format: date-time
- *                 description: Data e hora do evento
+ *                 description: Data do evento
+ *                 example: 2025-12-31T20:00:00Z
  *               location:
  *                 type: string
-<<<<<<< HEAD
- *                 description: Local do evento
-=======
->>>>>>> b64e7c6d847aeec131ab458d46a67a5586a75e3a
+ *                 description: Localização
  *               maxCapacity:
- *                 type: integer
- *                 description: Capacidade máxima de participantes
+ *                 type: number
+ *                 description: Quantidade máxima de pessoas
+ *                 example: 5000
  *     responses:
  *       201:
  *         description: Evento criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Dados inválidos
  */
@@ -63,27 +109,7 @@ router.post('/', (req, res) => eventController.create(req, res));
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   title:
- *                     type: string
- *                   description:
- *                     type: string
- *                   date:
- *                     type: string
- *                     format: date-time
- *                   location:
- *                     type: string
- *                   maxCapacity:
- *                     type: integer
- *                   createdAt:
- *                     type: string
- *                     format: date-time
- *                   updatedAt:
- *                     type: string
- *                     format: date-time
+ *                 $ref: '#/components/schemas/Event'
  */
 router.get('/', (req, res) => eventController.findAll(req, res));
 
@@ -99,10 +125,15 @@ router.get('/', (req, res) => eventController.findAll(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do evento
  *     responses:
  *       200:
  *         description: Evento encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  *       404:
  *         description: Evento não encontrado
  */
@@ -112,7 +143,7 @@ router.get('/:id', (req, res) => eventController.findOne(req, res));
  * @swagger
  * /api/events/{id}:
  *   put:
- *     summary: Atualizar evento
+ *     summary: Editar um evento
  *     tags: [Events]
  *     parameters:
  *       - in: path
@@ -120,6 +151,7 @@ router.get('/:id', (req, res) => eventController.findOne(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do evento
  *     requestBody:
  *       required: true
@@ -130,18 +162,28 @@ router.get('/:id', (req, res) => eventController.findOne(req, res));
  *             properties:
  *               title:
  *                 type: string
+ *                 description: Titulo do evento
  *               description:
  *                 type: string
+ *                 description: Descrição do evento
  *               date:
  *                 type: string
- *                 format: date-time
+ *                 description: Data do evento
+ *                 example: 2025-12-31T20:00:00Z
  *               location:
  *                 type: string
+ *                 description: Localização
  *               maxCapacity:
- *                 type: integer
+ *                 type: number
+ *                 description: Quantidade máxima de pessoas
+ *                 example: 5000
  *     responses:
  *       200:
  *         description: Evento atualizado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  *       404:
  *         description: Evento não encontrado
  *       400:
@@ -161,6 +203,7 @@ router.put('/:id', (req, res) => eventController.update(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do evento
  *     responses:
  *       204:

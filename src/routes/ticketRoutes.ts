@@ -13,42 +13,29 @@ const ticketController = new TicketController();
  *       properties:
  *         id:
  *           type: string
+ *           format: uuid
  *           description: ID único do ticket
  *         userId:
  *           type: string
+ *           format: uuid
  *           description: ID do usuário que comprou o ticket
  *         eventId:
  *           type: string
+ *           format: uuid
  *           description: ID do evento
  *         price:
  *           type: number
  *           format: decimal
  *           description: Preço do ticket (com 2 casas decimais)
+ *           example: 150.00
  *         isUsed:
  *           type: boolean
  *           description: Indica se o ticket já foi utilizado
+ *           example: false
  *         createdAt:
  *           type: string
  *           format: date-time
  *           description: Data de criação do ticket
- *     TicketInput:
- *       type: object
- *       required:
- *         - userId
- *         - eventId
- *         - price
- *       properties:
- *         userId:
- *           type: string
- *           description: ID do usuário
- *         eventId:
- *           type: string
- *           description: ID do evento
- *         price:
- *           type: number
- *           format: decimal
- *           description: Preço do ticket
- *           example: 50.00
  */
 
 /**
@@ -62,25 +49,26 @@ const ticketController = new TicketController();
  *       content:
  *         application/json:
  *           schema:
-<<<<<<< HEAD
- *             $ref: '#/components/schemas/TicketInput'
-=======
  *             type: object
  *             required:
  *               - userId
  *               - eventId
  *               - price
- *               - isUsed
  *             properties:
  *               userId:
  *                 type: string
+ *                 format: uuid
+ *                 description: ID do usuário
+ *                 example: 550e8400-e29b-41d4-a716-446655440000
  *               eventId:
  *                 type: string
+ *                 format: uuid
+ *                 description: ID do evento
+ *                 example: 660e8400-e29b-41d4-a716-446655440000
  *               price:
  *                 type: number
- *               isUsed:
- *                 type: boolean
->>>>>>> b64e7c6d847aeec131ab458d46a67a5586a75e3a
+ *                 description: Preço do ingresso
+ *                 example: 150.00
  *     responses:
  *       201:
  *         description: Ticket criado com sucesso
@@ -108,11 +96,13 @@ router.post('/', (req, res) => ticketController.create(req, res));
  *         name: userId
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: Filtrar tickets por ID do usuário
  *       - in: query
  *         name: eventId
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: Filtrar tickets por ID do evento
  *       - in: query
  *         name: isUsed
@@ -143,6 +133,7 @@ router.get('/', (req, res) => ticketController.findAll(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do ticket
  *     responses:
  *       200:
@@ -160,7 +151,7 @@ router.get('/:id', (req, res) => ticketController.findOne(req, res));
  * @swagger
  * /api/tickets/{id}:
  *   put:
- *     summary: Atualizar ticket (marcar como usado)
+ *     summary: Atualizar ticket (marcar como usado ou alterar preço)
  *     tags: [Tickets]
  *     parameters:
  *       - in: path
@@ -168,6 +159,7 @@ router.get('/:id', (req, res) => ticketController.findOne(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do ticket
  *     requestBody:
  *       required: true
@@ -179,10 +171,12 @@ router.get('/:id', (req, res) => ticketController.findOne(req, res));
  *               isUsed:
  *                 type: boolean
  *                 description: Marcar ticket como usado/não usado
+ *                 example: true
  *               price:
  *                 type: number
  *                 format: decimal
  *                 description: Atualizar preço do ticket
+ *                 example: 200.00
  *     responses:
  *       200:
  *         description: Ticket atualizado com sucesso
@@ -209,6 +203,7 @@ router.put('/:id', (req, res) => ticketController.update(req, res));
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
  *         description: ID do ticket
  *     responses:
  *       204:
