@@ -58,19 +58,24 @@ Toda a entrada de dados passa por validações com **Zod** (camadas backend e fr
 
 ### Login/Registro
 - Tela inicial; o primeiro usuário cadastrado se torna admin automaticamente. Permite alternar entre login e criação de conta.
+![Login](images_docs/login.png)
+![Login](images_docs/register.png)
 
 ### Usuário Administrador
 - Podem criar/editar/deletar eventos e configurar múltiplos tipos de ingresso.
 - Podem ver todos os usuários alterar nome e email.
 - Tem cards dizendo a quantidade de eventos, usuários, ingressos comprados e ingressos ativos(não usados).
-  [foto]
+![Eventos administrador](images_docs/adminevents.png)
+![Todos os tickets](images_docs/adminTickets.png)
+![Todos os usuários](images_docs/adminusers.png)
+
 ### Usuários 
 - Visualizam eventos em aberto, podem comprar ingressos, vizualizar os ingressos e usá-los.
 - Ao usar um ingresso é gerado um código de validação. depois de usado, o código não aparece mais.
 - Podem alterar suas credenciais.
-
-  [foto]
-
+![Eventos usuário](images_docs/userevents.png)
+![tickets usuário](images_docs/adminTickets.png)
+![Dados usuário](images_docs/userData.png)
 
 ## Comandos úteis
 
