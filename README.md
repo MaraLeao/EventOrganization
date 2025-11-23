@@ -56,14 +56,21 @@ Toda a entrada de dados passa por validações com **Zod** (camadas backend e fr
 
 ## Telas do frontend
 
-- **Login/Registro**: tela inicial; o primeiro usuário cadastrado se torna admin automaticamente. Permite alternar entre login e criação de conta.
-- **Dashboard**: cards com estatísticas (total de eventos, ingressos comprados, ingressos ativos e, apenas para admins, total de usuários).
-- **Eventos**: lista com filtros. Administradores podem criar/editar/deletar eventos e configurar múltiplos tipos de ingresso. Usuários visualizam disponibilidade por tipo e compram ingressos.
-- **Usuários** (admins): CRUD completo de contas com busca e ações rápidas de edição/remoção.
-- **Ingressos**:
-  - Para admins, mostra todos os ingressos emitidos e permite edição/remoção.
-  - Para usuários (“Meus ingressos”), lista apenas ingressos próprios, permitindo abrir o modal e “usar” o ingresso (gerando código).
-- **Minha conta** (usuários comuns): formulário para atualizar nome, email e senha pessoal.
+### Login/Registro
+- Tela inicial; o primeiro usuário cadastrado se torna admin automaticamente. Permite alternar entre login e criação de conta.
+
+### Usuário Administrador
+- Podem criar/editar/deletar eventos e configurar múltiplos tipos de ingresso.
+- Podem ver todos os usuários alterar nome e email.
+- Tem cards dizendo a quantidade de eventos, usuários, ingressos comprados e ingressos ativos(não usados).
+  [foto]
+### Usuários 
+- Visualizam eventos em aberto, podem comprar ingressos, vizualizar os ingressos e usá-los.
+- Ao usar um ingresso é gerado um código de validação. depois de usado, o código não aparece mais.
+- Podem alterar suas credenciais.
+
+  [foto]
+
 
 ## Comandos úteis
 
