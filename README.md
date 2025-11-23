@@ -52,6 +52,19 @@ O Swagger fica disponível em `http://localhost:3000/api-docs`.
   - Comprar ingressos escolhendo o tipo e a quantidade (respeitando disponibilidade).
   - Visualizar e “usar” ingressos, gerando um código aleatório.
 
+Toda a entrada de dados passa por validações com **Zod** (camadas backend e frontend), garantindo payloads consistentes e mensagens de erro claras.
+
+## Telas do frontend
+
+- **Login/Registro**: tela inicial; o primeiro usuário cadastrado se torna admin automaticamente. Permite alternar entre login e criação de conta.
+- **Dashboard**: cards com estatísticas (total de eventos, ingressos comprados, ingressos ativos e, apenas para admins, total de usuários).
+- **Eventos**: lista com filtros. Administradores podem criar/editar/deletar eventos e configurar múltiplos tipos de ingresso. Usuários visualizam disponibilidade por tipo e compram ingressos.
+- **Usuários** (admins): CRUD completo de contas com busca e ações rápidas de edição/remoção.
+- **Ingressos**:
+  - Para admins, mostra todos os ingressos emitidos e permite edição/remoção.
+  - Para usuários (“Meus ingressos”), lista apenas ingressos próprios, permitindo abrir o modal e “usar” o ingresso (gerando código).
+- **Minha conta** (usuários comuns): formulário para atualizar nome, email e senha pessoal.
+
 ## Comandos úteis
 
 - `npx prisma studio` — abrir o Prisma Studio para inspecionar o banco.
