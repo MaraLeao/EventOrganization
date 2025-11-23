@@ -1,13 +1,27 @@
 import { prisma } from '../config/database.js';
 import { createUserSchema, updateUserSchema } from '../schemas/userSchema.js';
 import type { z } from 'zod';
+import bcrypt from 'bcryptjs';
 
 type CreateUserInput = z.infer<typeof createUserSchema>;
 type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export class UserModel {
   async create(data: CreateUserInput) {
-    return await prisma.user.create({ data });
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    return await prisma.user.create({
+      data: {
+        ...data,
+        password: hashedPassword,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async findAll() {
@@ -19,6 +33,12 @@ export class UserModel {
         createdAt: true,
         updatedAt: true,
       },
+    });
+  }
+
+  async findByEmail(email: string) {
+    return await prisma.user.findUnique({
+      where: { email },
     });
   }
 
@@ -41,9 +61,14 @@ export class UserModel {
   }
 
   async update(id: string, data: UpdateUserInput) {
+    const payload = { ...data } as UpdateUserInput & { password?: string };
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 10);
+    }
+
     return await prisma.user.update({
       where: { id },
-      data,
+      data: payload,
       select: {
         id: true,
         name: true,

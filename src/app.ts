@@ -4,6 +4,8 @@ import { swaggerSpec } from './config/swagger.js';
 import userRoutes from './routes/userRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import { authenticate } from './middlewares/authMiddleware.js';
 
 const app = express();
 
@@ -13,9 +15,10 @@ app.use(express.json());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api/tickets', ticketRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', authenticate, userRoutes);
+app.use('/api/events', authenticate, eventRoutes);
+app.use('/api/tickets', authenticate, ticketRoutes);
 
 app.get('/', (req, res) => {
   res.json({

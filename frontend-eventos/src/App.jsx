@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, Ticket, Plus, Edit2, Trash2, X, Search, Filter, TrendingUp, Clock, MapPin, UserCheck } from 'lucide-react';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';
 
 export default function EventsApp() {
   const [activeTab, setActiveTab] = useState('events');
@@ -12,22 +12,65 @@ export default function EventsApp() {
   const [modalType, setModalType] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [formError, setFormError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [token, setToken] = useState(() => localStorage.getItem('authToken'));
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('authUser');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [authMode, setAuthMode] = useState('login');
+  const [authData, setAuthData] = useState({ name: '', email: '', password: '' });
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
+    if (!token) return;
     loadData();
-  }, [activeTab]);
+  }, [activeTab, token]);
+
+  const logout = () => {
+    setToken(null);
+    setCurrentUser(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authUser');
+    setAuthData({ name: '', email: '', password: '' });
+    setActiveTab('events');
+  };
+
+  const handleUnauthorized = () => {
+    logout();
+    setAuthError('Sua sessão expirou. Faça login novamente.');
+  };
 
   const loadData = async () => {
+    if (!token) return;
     try {
+      const headers = { Authorization: `Bearer ${token}` };
+
       if (activeTab === 'users') {
-        const res = await fetch(`${API_URL}/users`);
+        const res = await fetch(`${API_URL}/users`, { headers });
+        if (!res.ok) {
+          if (res.status === 401) return handleUnauthorized();
+          throw new Error('Erro ao carregar usuários');
+        }
         setUsers(await res.json());
       } else if (activeTab === 'events') {
-        const res = await fetch(`${API_URL}/events`);
+        const res = await fetch(`${API_URL}/events`, { headers });
+        if (!res.ok) {
+          if (res.status === 401) return handleUnauthorized();
+          throw new Error('Erro ao carregar eventos');
+        }
         setEvents(await res.json());
       } else if (activeTab === 'tickets') {
-        const res = await fetch(`${API_URL}/tickets`);
+        const res = await fetch(`${API_URL}/tickets`, { headers });
+        if (!res.ok) {
+          if (res.status === 401) return handleUnauthorized();
+          throw new Error('Erro ao carregar ingressos');
+        }
         setTickets(await res.json());
       }
     } catch (error) {
@@ -50,37 +93,122 @@ export default function EventsApp() {
     setShowModal(false);
     setEditingItem(null);
     setFormData({});
+    setFormError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     try {
+      if (!token) {
+        return handleUnauthorized();
+      }
       const endpoint = modalType === 'user' ? 'users' : modalType === 'event' ? 'events' : 'tickets';
       const method = editingItem ? 'PUT' : 'POST';
       const url = editingItem ? `${API_URL}/${endpoint}/${editingItem.id}` : `${API_URL}/${endpoint}`;
 
-      await fetch(url, {
+      const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
       });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        let message = 'Erro ao salvar';
+        try {
+          const data = await response.json();
+          if (data && typeof data.error === 'string') {
+            message = data.error;
+          }
+        } catch (_) {}
+        throw new Error(message);
+      }
 
       closeModal();
       loadData();
     } catch (error) {
       console.error('Erro ao salvar:', error);
+      setFormError(error.message || 'Erro ao salvar');
     }
   };
 
   const handleDelete = async (type, id) => {
     if (!confirm('Tem certeza que deseja excluir?')) return;
     try {
+      if (!token) {
+        return handleUnauthorized();
+      }
       const endpoint = type === 'user' ? 'users' : type === 'event' ? 'events' : 'tickets';
-      await fetch(`${API_URL}/${endpoint}/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        throw new Error('Erro ao deletar');
+      }
       loadData();
     } catch (error) {
       console.error('Erro ao deletar:', error);
     }
+  };
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const endpoint = authMode === 'login' ? 'login' : 'register';
+      const payload =
+        authMode === 'login'
+          ? {
+              email: authData.email,
+              password: authData.password,
+            }
+          : {
+              name: authData.name,
+              email: authData.email,
+              password: authData.password,
+            };
+
+      const response = await fetch(`${API_URL}/auth/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro de autenticação');
+      }
+
+      setToken(data.token);
+      setCurrentUser(data.user);
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('authUser', JSON.stringify(data.user));
+      setAuthData({ name: '', email: '', password: '' });
+      setAuthMode('login');
+      setAuthError('');
+    } catch (error) {
+      console.error('Erro de autenticação:', error);
+      setAuthError(error.message || 'Erro de autenticação');
+    }
+  };
+
+  const toggleAuthMode = () => {
+    setAuthMode((prev) => (prev === 'login' ? 'register' : 'login'));
+    setAuthError('');
   };
 
   const getStats = () => {
@@ -405,6 +533,83 @@ export default function EventsApp() {
     </div>
   );
 
+  const renderAuth = () => (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md border border-purple-100">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white text-2xl font-bold mb-4">
+            VE
+          </div>
+          <h1 className="text-3xl font-bold text-gray-800">VivaEventos</h1>
+          <p className="text-gray-500 mt-2">
+            {authMode === 'login'
+              ? 'Acesse o painel para gerenciar eventos, usuários e ingressos.'
+              : 'Crie sua conta para começar a organizar seus eventos.'}
+          </p>
+        </div>
+
+        <form onSubmit={handleAuthSubmit} className="space-y-4">
+          {authMode === 'register' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
+              <input
+                type="text"
+                placeholder="Seu nome"
+                value={authData.name}
+                onChange={(e) => setAuthData({ ...authData, name: e.target.value })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input
+              type="email"
+              placeholder="voce@exemplo.com"
+              value={authData.email}
+              onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={authData.password}
+              onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            />
+          </div>
+
+          {authError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-2 text-sm">
+              {authError}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold shadow-lg hover:opacity-90 transition"
+          >
+            {authMode === 'login' ? 'Entrar' : 'Registrar'}
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={toggleAuthMode}
+          className="w-full mt-4 text-sm text-purple-600 hover:text-purple-700 font-medium"
+        >
+          {authMode === 'login' ? 'Não tem conta? Registre-se' : 'Já possui conta? Faça login'}
+        </button>
+      </div>
+    </div>
+  );
+
   const renderModal = () => {
     if (!showModal) return null;
 
@@ -424,6 +629,11 @@ export default function EventsApp() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {formError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-2 text-sm">
+                {formError}
+              </div>
+            )}
             {modalType === 'user' && (
               <>
                 <div>
@@ -595,12 +805,36 @@ export default function EventsApp() {
     );
   };
 
+  if (!token) {
+    return renderAuth();
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white p-8 shadow-2xl">
-        <div className="container mx-auto">
-          <h1 className="text-4xl font-bold mb-2">VivaEventos</h1>
-          <p className="text-blue-100">Gerenciamento de eventos, usuários e ingressos</p>
+        <div className="container mx-auto flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">VivaEventos</h1>
+            <p className="text-blue-100">Gerenciamento de eventos, usuários e ingressos</p>
+          </div>
+          {currentUser && (
+            <div className="flex items-center gap-4 bg-white/10 backdrop-blur rounded-2xl px-5 py-3">
+              <div>
+                <p className="text-sm text-blue-100">Logado como</p>
+                <p className="font-semibold">{currentUser.name}</p>
+                <p className="text-sm text-blue-100">{currentUser.email}</p>
+              </div>
+              <button
+                onClick={() => {
+                  logout();
+                  setAuthError('');
+                }}
+                className="bg-white text-blue-600 px-4 py-2 rounded-xl font-semibold hover:bg-blue-50 transition"
+              >
+                Sair
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
