@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, Ticket, Plus, Edit2, Trash2, X, Search, Filter, TrendingUp, Clock, MapPin, UserCheck } from 'lucide-react';
+import { Users, Calendar, Ticket, Plus, Edit2, Trash2, X, Search, TrendingUp, Clock, MapPin, UserCheck, User } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -26,11 +26,35 @@ export default function EventsApp() {
   const [authMode, setAuthMode] = useState('login');
   const [authData, setAuthData] = useState({ name: '', email: '', password: '' });
   const [authError, setAuthError] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [accountForm, setAccountForm] = useState({ name: '', email: '', password: '' });
+  const [accountFeedback, setAccountFeedback] = useState({ type: '', message: '' });
+
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   useEffect(() => {
     if (!token) return;
     loadData();
-  }, [activeTab, token]);
+  }, [activeTab, token, isAdmin]);
+
+  useEffect(() => {
+    if (currentUser) {
+      setAccountForm({
+        name: currentUser.name || '',
+        email: currentUser.email || '',
+        password: '',
+      });
+    } else {
+      setAccountForm({ name: '', email: '', password: '' });
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!token) return;
+    if (!isAdmin && (activeTab === 'users' || activeTab === 'tickets')) {
+      setActiveTab('events');
+    }
+  }, [isAdmin, activeTab, token]);
 
   const logout = () => {
     setToken(null);
@@ -39,6 +63,14 @@ export default function EventsApp() {
     localStorage.removeItem('authUser');
     setAuthData({ name: '', email: '', password: '' });
     setActiveTab('events');
+    setUsers([]);
+    setEvents([]);
+    setTickets([]);
+    setFormData({});
+    setShowModal(false);
+    setSelectedEvent(null);
+    setAuthError('');
+    setAccountFeedback({ type: '', message: '' });
   };
 
   const handleUnauthorized = () => {
@@ -51,21 +83,29 @@ export default function EventsApp() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
-      if (activeTab === 'users') {
+      if (isAdmin && activeTab === 'users') {
         const res = await fetch(`${API_URL}/users`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar usuários');
         }
         setUsers(await res.json());
-      } else if (activeTab === 'events') {
+      }
+
+      if (activeTab === 'events') {
         const res = await fetch(`${API_URL}/events`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar eventos');
         }
         setEvents(await res.json());
-      } else if (activeTab === 'tickets') {
+      }
+
+      const shouldFetchTickets =
+        (isAdmin && activeTab === 'tickets') ||
+        (!isAdmin && activeTab === 'myTickets');
+
+      if (shouldFetchTickets) {
         const res = await fetch(`${API_URL}/tickets`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
@@ -73,17 +113,39 @@ export default function EventsApp() {
         }
         setTickets(await res.json());
       }
+
+      if (!isAdmin && activeTab === 'account' && currentUser) {
+        const res = await fetch(`${API_URL}/users/${currentUser.id}`, { headers });
+        if (!res.ok) {
+          if (res.status === 401) return handleUnauthorized();
+          throw new Error('Erro ao carregar dados do usuário');
+        }
+        const data = await res.json();
+        setAccountForm({
+          name: data.name,
+          email: data.email,
+          password: '',
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     }
   };
 
-  const openModal = (type, item = null) => {
+  const openModal = (type, item = null, options = {}) => {
     setModalType(type);
     setEditingItem(item);
-    if (item) {
+    if (options.event) {
+      setSelectedEvent(options.event);
+      setFormData({
+        eventId: options.event.id,
+        quantity: 1,
+      });
+    } else if (item) {
+      setSelectedEvent(null);
       setFormData(item);
     } else {
+      setSelectedEvent(null);
       setFormData({});
     }
     setShowModal(true);
@@ -94,6 +156,7 @@ export default function EventsApp() {
     setEditingItem(null);
     setFormData({});
     setFormError('');
+    setSelectedEvent(null);
   };
 
   const handleSubmit = async (e) => {
@@ -106,6 +169,18 @@ export default function EventsApp() {
       const endpoint = modalType === 'user' ? 'users' : modalType === 'event' ? 'events' : 'tickets';
       const method = editingItem ? 'PUT' : 'POST';
       const url = editingItem ? `${API_URL}/${endpoint}/${editingItem.id}` : `${API_URL}/${endpoint}`;
+      let bodyData = formData;
+
+      if (modalType === 'ticket' && !isAdmin) {
+        const eventId = formData.eventId || selectedEvent?.id;
+        if (!eventId) {
+          throw new Error('Evento inválido para compra');
+        }
+        bodyData = {
+          eventId,
+          quantity: Number(formData.quantity) > 0 ? Number(formData.quantity) : 1,
+        };
+      }
 
       const response = await fetch(url, {
         method,
@@ -113,7 +188,7 @@ export default function EventsApp() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(bodyData),
       });
 
       if (!response.ok) {
@@ -200,6 +275,8 @@ export default function EventsApp() {
       setAuthData({ name: '', email: '', password: '' });
       setAuthMode('login');
       setAuthError('');
+      setActiveTab('events');
+      setAccountFeedback({ type: '', message: '' });
     } catch (error) {
       console.error('Erro de autenticação:', error);
       setAuthError(error.message || 'Erro de autenticação');
@@ -211,14 +288,67 @@ export default function EventsApp() {
     setAuthError('');
   };
 
+  const handleBuyTicket = (event) => {
+    if (!token) {
+      setAuthError('Faça login para comprar ingressos.');
+      return;
+    }
+    openModal('ticket', null, { event });
+  };
+
+  const handleAccountSubmit = async (e) => {
+    e.preventDefault();
+    if (!token || !currentUser) {
+      return handleUnauthorized();
+    }
+    setAccountFeedback({ type: '', message: '' });
+    try {
+      const payload = {};
+      if (accountForm.name) payload.name = accountForm.name;
+      if (accountForm.email) payload.email = accountForm.email;
+      if (accountForm.password) payload.password = accountForm.password;
+
+      if (Object.keys(payload).length === 0) {
+        setAccountFeedback({ type: 'error', message: 'Informe ao menos um campo para atualizar.' });
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/users/${currentUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        throw new Error(data?.error || 'Erro ao atualizar perfil');
+      }
+
+      setCurrentUser(data);
+      localStorage.setItem('authUser', JSON.stringify(data));
+      setAccountForm((prev) => ({ ...prev, password: '' }));
+      setAccountFeedback({ type: 'success', message: 'Dados atualizados com sucesso!' });
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      setAccountFeedback({ type: 'error', message: error.message || 'Erro ao atualizar perfil' });
+    }
+  };
+
   const getStats = () => {
-    const totalUsers = users.length;
     const totalEvents = events.length;
     const totalTickets = tickets.length;
     const activeTickets = tickets.filter(t => !t.isUsed).length;
     
     return {
-      totalUsers,
+      totalUsers: isAdmin ? users.length : null,
       totalEvents,
       totalTickets,
       activeTickets
@@ -242,17 +372,19 @@ export default function EventsApp() {
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-105 transition-transform">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm font-medium mb-1">Usuários</p>
-              <h3 className="text-3xl font-bold">{stats.totalUsers}</h3>
-            </div>
-            <div className="bg-white bg-opacity-20 p-3 rounded-xl">
-              <Users size={28} />
+        {isAdmin && (
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-105 transition-transform">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm font-medium mb-1">Usuários</p>
+                <h3 className="text-3xl font-bold">{stats.totalUsers}</h3>
+              </div>
+              <div className="bg-white bg-opacity-20 p-3 rounded-xl">
+                <Users size={28} />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-105 transition-transform">
           <div className="flex items-center justify-between">
@@ -359,12 +491,14 @@ export default function EventsApp() {
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Eventos</h2>
           <p className="text-gray-600">Todos os eventos cadastrados no sistema</p>
         </div>
-        <button
-          onClick={() => openModal('event')}
-          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg transition-all transform hover:scale-105"
-        >
-          <Plus size={20} /> Novo Evento
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => openModal('event')}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg transition-all transform hover:scale-105"
+          >
+            <Plus size={20} /> Novo Evento
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
@@ -385,25 +519,34 @@ export default function EventsApp() {
           <div key={event.id} className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-2xl transition-all overflow-hidden group">
             <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
             <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="font-bold text-2xl text-gray-800 group-hover:text-blue-600 transition-colors">
-                  {event.title}
-                </h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openModal('event', event)}
-                    className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete('event', event.id)}
-                    className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-bold text-2xl text-gray-800 group-hover:text-blue-600 transition-colors">
+                    {event.title}
+                  </h3>
+                  {isAdmin ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openModal('event', event)}
+                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('event', event.id)}
+                        className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleBuyTicket(event)}
+                      className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-emerald-600 hover:to-emerald-700 transition shadow"
+                    >
+                      <Ticket size={16} /> Comprar ingresso
+                    </button>
+                  )}
                 </div>
-              </div>
 
               {event.description && (
                 <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
@@ -424,6 +567,14 @@ export default function EventsApp() {
                   <span>{event.location}</span>
                 </div>
 
+                <div className="flex items-center gap-3 text-gray-700 bg-gray-50 p-3 rounded-lg">
+                  <Ticket className="text-emerald-600" size={20} />
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase">Valor do ingresso</p>
+                    <p className="text-lg font-semibold text-emerald-600">R$ {Number(event.price).toFixed(2)}</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-emerald-50 p-3 rounded-lg">
                     <p className="text-xs text-emerald-600 font-medium mb-1">Capacidade</p>
@@ -442,19 +593,23 @@ export default function EventsApp() {
     </div>
   );
 
-  const renderTickets = () => (
+  const renderTickets = (allowManage = false) => (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">Ingressos</h2>
-          <p className="text-gray-600">Gerencie todos os ingressos vendidos</p>
+          <p className="text-gray-600">
+            {allowManage ? 'Gerencie todos os ingressos vendidos' : 'Veja seus ingressos ativos e usados'}
+          </p>
         </div>
-        <button
-          onClick={() => openModal('ticket')}
-          className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3 rounded-xl hover:from-emerald-700 hover:to-emerald-800 shadow-lg transition-all transform hover:scale-105"
-        >
-          <Plus size={20} /> Novo Ingresso
-        </button>
+        {allowManage && (
+          <button
+            onClick={() => openModal('ticket')}
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-3 rounded-xl hover:from-emerald-700 hover:to-emerald-800 shadow-lg transition-all transform hover:scale-105"
+          >
+            <Plus size={20} /> Novo Ingresso
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
@@ -510,20 +665,22 @@ export default function EventsApp() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openModal('ticket', ticket)}
-                      className="p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete('ticket', ticket.id)}
-                      className="p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+                  {allowManage && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openModal('ticket', ticket)}
+                        className="p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('ticket', ticket.id)}
+                        className="p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -609,6 +766,79 @@ export default function EventsApp() {
       </div>
     </div>
   );
+
+  const renderAccount = () => (
+    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow p-8 border border-gray-100 space-y-6">
+      <div>
+        <h2 className="text-3xl font-bold text-gray-800 mb-2">Minha conta</h2>
+        <p className="text-gray-600">Atualize seus dados pessoais sempre que precisar.</p>
+      </div>
+
+      <form onSubmit={handleAccountSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
+          <input
+            type="text"
+            value={accountForm.name}
+            onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input
+            type="email"
+            value={accountForm.email}
+            onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Nova senha</label>
+          <input
+            type="password"
+            placeholder="Deixe em branco para manter a senha atual"
+            value={accountForm.password}
+            onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {accountFeedback.message && (
+          <div
+            className={`rounded-lg px-4 py-2 text-sm ${
+              accountFeedback.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {accountFeedback.message}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-purple-800 transition shadow"
+        >
+          Salvar alterações
+        </button>
+      </form>
+    </div>
+  );
+  
+  const tabs = isAdmin
+    ? [
+        { id: 'events', label: 'Eventos', icon: Calendar, activeClass: 'from-blue-600 to-blue-700' },
+        { id: 'users', label: 'Usuários', icon: Users, activeClass: 'from-purple-600 to-purple-700' },
+        { id: 'tickets', label: 'Ingressos', icon: Ticket, activeClass: 'from-emerald-600 to-emerald-700' },
+      ]
+    : [
+        { id: 'events', label: 'Eventos', icon: Calendar, activeClass: 'from-blue-600 to-blue-700' },
+        { id: 'myTickets', label: 'Meus ingressos', icon: Ticket, activeClass: 'from-emerald-600 to-emerald-700' },
+        { id: 'account', label: 'Minha conta', icon: User, activeClass: 'from-purple-600 to-purple-700' },
+      ];
 
   const renderModal = () => {
     if (!showModal) return null;
@@ -729,48 +959,112 @@ export default function EventsApp() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Preço do ingresso (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.price ?? ''}
+                    onChange={e => setFormData({...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value)})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
               </>
             )}
 
             {modalType === 'ticket' && (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID do Usuário</label>
-                  <input
-                    type="text"
-                    placeholder="ID do usuário"
-                    value={formData.userId || ''}
-                    onChange={e => setFormData({...formData, userId: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100"
-                    required
-                    disabled={editingItem}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID do Evento</label>
-                  <input
-                    type="text"
-                    placeholder="ID do evento"
-                    value={formData.eventId || ''}
-                    onChange={e => setFormData({...formData, eventId: e.target.value})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100"
-                    required
-                    disabled={editingItem}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Preço (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formData.price || ''}
-                    onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                {editingItem && (
+                {isAdmin && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">ID do Usuário</label>
+                      <input
+                        type="text"
+                        placeholder="ID do usuário"
+                        value={formData.userId || ''}
+                        onChange={e => setFormData({...formData, userId: e.target.value})}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100"
+                        required
+                        disabled={editingItem}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">ID do Evento</label>
+                      <input
+                        type="text"
+                        placeholder="ID do evento"
+                        value={formData.eventId || ''}
+                        onChange={e => setFormData({...formData, eventId: e.target.value})}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:bg-gray-100"
+                        required
+                        disabled={editingItem}
+                      />
+                    </div>
+                  </>
+                )}
+                {!isAdmin && (
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500 mb-1">Evento selecionado</p>
+                    <p className="font-semibold text-gray-800">
+                      {selectedEvent?.title || 'Selecione um evento para comprar'}
+                    </p>
+                    {selectedEvent && (
+                      <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                        <MapPin size={14} />
+                        {selectedEvent.location}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {isAdmin ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Preço (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.price || ''}
+                      onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+                      <p className="text-sm text-gray-500">Valor unitário</p>
+                      <p className="text-2xl font-bold text-emerald-600">
+                        R$ {selectedEvent ? Number(selectedEvent.price).toFixed(2) : '0,00'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={formData.quantity || 1}
+                        onChange={e => {
+                          const value = parseInt(e.target.value, 10);
+                          setFormData({
+                            ...formData,
+                            quantity: Number.isNaN(value) ? 1 : value,
+                          });
+                        }}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      />
+                      {selectedEvent && (
+                        <p className="text-sm text-gray-500 mt-2">
+                          Total: R$ {((formData.quantity || 1) * Number(selectedEvent.price || 0)).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+                {editingItem && isAdmin && (
                   <label className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                     <input
                       type="checkbox"
@@ -842,47 +1136,34 @@ export default function EventsApp() {
         {renderDashboard()}
 
         <div className="bg-white rounded-xl shadow-md mb-6 p-2">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('events')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-all ${
-                activeTab === 'events'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Calendar size={20} />
-              Eventos
-            </button>
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-all ${
-                activeTab === 'users'
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Users size={20} />
-              Usuários
-            </button>
-            <button
-              onClick={() => setActiveTab('tickets')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-all ${
-                activeTab === 'tickets'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Ticket size={20} />
-              Ingressos
-            </button>
+          <div className="flex gap-2 flex-wrap">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-3 font-medium rounded-lg transition-all ${
+                    isActive
+                      ? `bg-gradient-to-r ${tab.activeClass} text-white shadow-lg`
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon size={20} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div>
-          {activeTab === 'users' && renderUsers()}
+          {isAdmin && activeTab === 'users' && renderUsers()}
           {activeTab === 'events' && renderEvents()}
-          {activeTab === 'tickets' && renderTickets()}
+          {isAdmin && activeTab === 'tickets' && renderTickets(true)}
+          {!isAdmin && activeTab === 'myTickets' && renderTickets(false)}
+          {!isAdmin && activeTab === 'account' && renderAccount()}
         </div>
       </div>
 

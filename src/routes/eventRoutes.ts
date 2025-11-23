@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { EventController } from '../controllers/eventController.js';
+import { authorizeRoles } from '../middlewares/authMiddleware.js';
 
 export const router = Router();
 const eventController = new EventController();
@@ -93,7 +94,7 @@ const eventController = new EventController();
  *       400:
  *         description: Dados inválidos
  */
-router.post('/', (req, res) => eventController.create(req, res));
+router.post('/', authorizeRoles('ADMIN'), (req, res) => eventController.create(req, res));
 
 /**
  * @swagger
@@ -189,7 +190,7 @@ router.get('/:id', (req, res) => eventController.findOne(req, res));
  *       400:
  *         description: Dados inválidos
  */
-router.put('/:id', (req, res) => eventController.update(req, res));
+router.put('/:id', authorizeRoles('ADMIN'), (req, res) => eventController.update(req, res));
 
 /**
  * @swagger
@@ -213,6 +214,6 @@ router.put('/:id', (req, res) => eventController.update(req, res));
  *       400:
  *         description: Não é possível deletar evento com ingressos associados
  */
-router.delete('/:id', (req, res) => eventController.delete(req, res));
+router.delete('/:id', authorizeRoles('ADMIN'), (req, res) => eventController.delete(req, res));
 
 export default router;

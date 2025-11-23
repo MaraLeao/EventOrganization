@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { TicketController } from '../controllers/ticketController.js';
+import { authorizeRoles } from '../middlewares/authMiddleware.js';
 
 export const router = Router();
 const ticketController = new TicketController();
@@ -189,7 +190,7 @@ router.get('/:id', (req, res) => ticketController.findOne(req, res));
  *       404:
  *         description: Ticket não encontrado
  */
-router.put('/:id', (req, res) => ticketController.update(req, res));
+router.put('/:id', authorizeRoles('ADMIN'), (req, res) => ticketController.update(req, res));
 
 /**
  * @swagger
@@ -213,6 +214,6 @@ router.put('/:id', (req, res) => ticketController.update(req, res));
  *       400:
  *         description: Não é possível deletar ticket já utilizado
  */
-router.delete('/:id', (req, res) => ticketController.delete(req, res));
+router.delete('/:id', authorizeRoles('ADMIN'), (req, res) => ticketController.delete(req, res));
 
 export default router;

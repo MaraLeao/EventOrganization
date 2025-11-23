@@ -37,6 +37,22 @@ export class TicketModel {
     });
   }
 
+  async findByUserId(userId: string) {
+    return await prisma.ticket.findMany({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        event: true,
+      },
+    });
+  }
+
   async findById(id: string) {
     return await prisma.ticket.findUnique({
       where: { id },

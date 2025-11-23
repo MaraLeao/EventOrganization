@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/userModel.js';
 import { createUserSchema } from '../schemas/userSchema.js';
 import { loginSchema } from '../schemas/authSchema.js';
+import { prisma } from '../config/database.js';
 
 const userModel = new UserModel();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
@@ -12,9 +13,11 @@ export class AuthController {
   async register(req: Request, res: Response) {
     try {
       const validatedData = createUserSchema.parse(req.body);
-      const user = await userModel.create(validatedData);
+      const existingUsers = await prisma.user.count();
+      const enforcedRole = existingUsers === 0 ? 'ADMIN' : 'USER';
+      const user = await userModel.create({ ...validatedData, role: enforcedRole });
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, email: user.email, name: user.name, role: user.role },
         JWT_SECRET,
         { expiresIn: '1d' },
       );
@@ -41,7 +44,7 @@ export class AuthController {
       }
 
       const token = jwt.sign(
-        { id: user.id, email: user.email, name: user.name },
+        { id: user.id, email: user.email, name: user.name, role: user.role },
         JWT_SECRET,
         { expiresIn: '1d' },
       );
@@ -51,6 +54,7 @@ export class AuthController {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: user.role,
         },
         token,
       });

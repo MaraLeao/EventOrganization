@@ -1,12 +1,16 @@
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { EventModel } from '../models/eventModel.js';
 import { createEventSchema, updateEventSchema } from '../schemas/eventSchema.js';
+import type { AuthenticatedRequest } from '../middlewares/authMiddleware.js';
 
 const eventModel = new EventModel();
 
 export class EventController {
-  async create(req: Request, res: Response) {
+  async create(req: AuthenticatedRequest, res: Response) {
     try {
+      if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
       const validatedData = createEventSchema.parse(req.body);
       const event = await eventModel.create(validatedData);
       res.status(201).json(event);
@@ -15,7 +19,7 @@ export class EventController {
     }
   }
 
-  async findAll(req: Request, res: Response) {
+  async findAll(req: AuthenticatedRequest, res: Response) {
     try {
       const events = await eventModel.findAll();
       res.json(events);
@@ -24,7 +28,7 @@ export class EventController {
     }
   }
 
-  async findOne(req: Request, res: Response) {
+  async findOne(req: AuthenticatedRequest, res: Response) {
     try {
       const event = await eventModel.findById(req.params.id);
       if (!event) {
@@ -36,8 +40,11 @@ export class EventController {
     }
   }
 
-  async update(req: Request, res: Response) {
+  async update(req: AuthenticatedRequest, res: Response) {
     try {
+      if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
       const validatedData = updateEventSchema.parse(req.body);
       const event = await eventModel.update(req.params.id, validatedData);
       res.json(event);
@@ -46,8 +53,11 @@ export class EventController {
     }
   }
 
-  async delete(req: Request, res: Response) {
+  async delete(req: AuthenticatedRequest, res: Response) {
     try {
+      if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
       await eventModel.delete(req.params.id);
       res.status(204).send();
     } catch (error: any) {

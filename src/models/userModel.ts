@@ -13,11 +13,13 @@ export class UserModel {
       data: {
         ...data,
         password: hashedPassword,
+        role: data.role ?? 'USER',
       },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -30,6 +32,7 @@ export class UserModel {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -49,6 +52,7 @@ export class UserModel {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
         tickets: {
@@ -73,6 +77,7 @@ export class UserModel {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },

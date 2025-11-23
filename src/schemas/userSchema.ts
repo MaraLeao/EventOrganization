@@ -24,6 +24,7 @@ export const createUserSchema = z.object({
     })
     .min(6, 'Senha deve ter no mínimo 6 caracteres')
     .max(100, 'Senha deve ter no máximo 100 caracteres'),
+  role: z.enum(['ADMIN', 'USER']).optional().default('USER'),
 });
 
 export const updateUserSchema = z
@@ -45,6 +46,7 @@ export const updateUserSchema = z
       .min(6, 'Senha deve ter no mínimo 6 caracteres')
       .max(100, 'Senha deve ter no máximo 100 caracteres')
       .optional(),
+    role: z.enum(['ADMIN', 'USER']).optional(),
   })
   .refine((data: {}) => Object.keys(data).length > 0, {
     message: 'Pelo menos um campo deve ser fornecido para atualização',

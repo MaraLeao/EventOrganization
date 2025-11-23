@@ -12,6 +12,7 @@ model User {
   name      String
   email     String    @unique
   password  String
+  role      Role      @default(USER)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   tickets   Ticket[]
@@ -24,6 +25,7 @@ model Event {
   date         DateTime
   location     String
   maxCapacity  Int
+  price        Decimal    @db.Decimal(10, 2) @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   tickets      Ticket[]
@@ -40,5 +42,10 @@ model Ticket {
   user      User      @relation(fields: [userId], references: [id])
   event     Event     @relation(fields: [eventId], references: [id])
 
-  @@unique([userId, eventId])
+  @@index([userId])
+}
+
+enum Role {
+  USER
+  ADMIN
 }

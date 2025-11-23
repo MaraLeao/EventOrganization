@@ -29,6 +29,10 @@ export const createEventSchema = z.object({
     .positive('Capacidade deve ser positiva')
     .min(1, 'Capacidade deve ser no mínimo 1')
     .max(1000000, 'Capacidade máxima excedida'),
+  price: z
+    .number({ message: 'Preço é obrigatório' })
+    .positive('Preço deve ser positivo')
+    .max(999999.99, 'Preço máximo excedido'),
 });
 
 export const updateEventSchema = z
@@ -64,6 +68,11 @@ export const updateEventSchema = z
       .positive('Capacidade deve ser positiva')
       .min(1, 'Capacidade deve ser no mínimo 1')
       .max(1000000, 'Capacidade máxima excedida')
+      .optional(),
+    price: z
+      .number()
+      .positive('Preço deve ser positivo')
+      .max(999999.99, 'Preço máximo excedido')
       .optional(),
   })
   .refine((data: {}) => Object.keys(data).length > 0, {

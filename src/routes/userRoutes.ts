@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { UserController } from '../controllers/userController.js';
+import { authorizeRoles, authorizeSelfOrAdmin } from '../middlewares/authMiddleware.js';
 
 export const router = Router();
 const userController = new UserController();
@@ -71,7 +72,7 @@ const userController = new UserController();
  *       409:
  *         description: Email já cadastrado
  */
-router.post('/', (req, res) => userController.create(req, res));
+router.post('/', authorizeRoles('ADMIN'), (req, res) => userController.create(req, res));
 
 /**
  * @swagger
@@ -89,7 +90,7 @@ router.post('/', (req, res) => userController.create(req, res));
  *               items:
  *                 $ref: '#/components/schemas/User'
  */
-router.get('/', (req, res) => userController.findAll(req, res));
+router.get('/', authorizeRoles('ADMIN'), (req, res) => userController.findAll(req, res));
 
 /**
  * @swagger
@@ -114,7 +115,7 @@ router.get('/', (req, res) => userController.findAll(req, res));
  *       404:
  *         description: Usuário não encontrado
  */
-router.get('/:id', (req, res) => userController.findOne(req, res));
+router.get('/:id', authorizeSelfOrAdmin, (req, res) => userController.findOne(req, res));
 
 /**
  * @swagger
@@ -161,7 +162,7 @@ router.get('/:id', (req, res) => userController.findOne(req, res));
  *       409:
  *         description: Email já cadastrado por outro usuário
  */
-router.put('/:id', (req, res) => userController.update(req, res));
+router.put('/:id', authorizeSelfOrAdmin, (req, res) => userController.update(req, res));
 
 /**
  * @swagger
@@ -184,6 +185,6 @@ router.put('/:id', (req, res) => userController.update(req, res));
  *       400:
  *         description: Não é possível deletar usuário com ingressos associados
  */
-router.delete('/:id', (req, res) => userController.delete(req, res));
+router.delete('/:id', authorizeSelfOrAdmin, (req, res) => userController.delete(req, res));
 
 export default router;
