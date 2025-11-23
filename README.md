@@ -65,16 +65,16 @@ Toda a entrada de dados passa por validações com **Zod** (camadas backend e fr
 - Podem criar/editar/deletar eventos e configurar múltiplos tipos de ingresso.
 - Podem ver todos os usuários alterar nome e email.
 - Tem cards dizendo a quantidade de eventos, usuários, ingressos comprados e ingressos ativos(não usados).
-![Eventos administrador](images_docs/adminevents.png)
-![Todos os tickets](images_docs/adminTickets.png)
+![Eventos administrador](images_docs/adminevents.png) <br>
+![Todos os tickets](images_docs/adminTickets.png) <br>
 ![Todos os usuários](images_docs/adminusers.png)
 
 ### Usuários 
 - Visualizam eventos em aberto, podem comprar ingressos, vizualizar os ingressos e usá-los.
 - Ao usar um ingresso é gerado um código de validação. depois de usado, o código não aparece mais.
 - Podem alterar suas credenciais.
-![Eventos usuário](images_docs/userevents.png)
-![tickets usuário](images_docs/adminTickets.png)
+![Eventos usuário](images_docs/userevents.png)<br>
+![tickets usuário](images_docs/adminTickets.png)<br>
 ![Dados usuário](images_docs/userData.png)
 
 ## Comandos úteis
