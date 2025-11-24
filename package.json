@@ -1,7 +1,7 @@
 {
   "name": "eventorganization",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "description": "Api event organization2",
   "main": "index.js",
   "scripts": {
