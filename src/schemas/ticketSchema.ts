@@ -2,22 +2,22 @@ import { z } from 'zod';
 
 export const createTicketSchema = z.object({
   userId: z
-    .string({ message: 'ID do usuário é obrigatório' })
-    .min(1, 'ID do usuário não pode ser vazio'),
+    .string()
+    .min(1, 'ID do usuário é obrigatório'),
   eventId: z
-    .string({ message: 'ID do evento é obrigatório' })
+    .string()
     .min(1, 'ID do evento não pode ser vazio'),
   ticketTypeId: z
-    .string({ message: 'ID do tipo de ingresso é obrigatório' })
+    .string()
     .min(1, 'ID do tipo de ingresso não pode ser vazio'),
 });
 
 export const purchaseTicketSchema = z.object({
   eventId: z
-    .string({ message: 'ID do evento é obrigatório' })
+    .string()
     .min(1, 'ID do evento não pode ser vazio'),
   ticketTypeId: z
-    .string({ message: 'ID do tipo de ingresso é obrigatório' })
+    .string()
     .min(1, 'ID do tipo de ingresso não pode ser vazio'),
   quantity: z
     .number()
@@ -37,10 +37,10 @@ export const updateTicketSchema = z
       .max(999999.99, 'Preço máximo excedido')
       .optional(),
     isUsed: z
-      .boolean({ message: 'isUsed deve ser verdadeiro ou falso' })
+      .boolean()
       .optional(),
   })
-  .refine((data: {}) => Object.keys(data).length > 0, {
+  .refine((data) => Object.keys(data).length > 0, {
     message: 'Pelo menos um campo deve ser fornecido para atualização',
   });
 

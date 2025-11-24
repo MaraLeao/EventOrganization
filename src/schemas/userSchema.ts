@@ -2,30 +2,25 @@ import { z } from 'zod';
 
 export const createUserSchema = z.object({
   name: z
-    .string({
-      required_error: 'Nome é obrigatório',
-      invalid_type_error: 'Nome deve ser uma string',
-    })
+    .string()
+    .min(1, 'Nome é obrigatório')           // substitui required_error
     .min(3, 'Nome deve ter no mínimo 3 caracteres')
     .max(100, 'Nome deve ter no máximo 100 caracteres')
     .trim(),
   email: z
-    .string({
-      required_error: 'Email é obrigatório',
-      invalid_type_error: 'Email deve ser uma string',
-    })
+    .string()
+    .min(1, 'Email é obrigatório')          // substitui required_error
     .email('Email inválido')
     .toLowerCase()
     .trim(),
   password: z
-    .string({
-      required_error: 'Senha é obrigatória',
-      invalid_type_error: 'Senha deve ser uma string',
-    })
+    .string()
+    .min(1, 'Senha é obrigatória')          // substitui required_error
     .min(6, 'Senha deve ter no mínimo 6 caracteres')
     .max(100, 'Senha deve ter no máximo 100 caracteres'),
   role: z.enum(['ADMIN', 'USER']).optional().default('USER'),
 });
+
 
 export const updateUserSchema = z
   .object({
@@ -38,8 +33,9 @@ export const updateUserSchema = z
     email: z
       .string()
       .email('Email inválido')
-      .toLowerCase()
       .trim()
+      .toLowerCase()
+      .min(1, 'Email não pode ser vazio')
       .optional(),
     password: z
       .string()
