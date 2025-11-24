@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.js';
 import userRoutes from './routes/userRoutes.js';
@@ -8,6 +9,14 @@ import authRoutes from './routes/authRoutes.js';
 import { authenticate } from './middlewares/authMiddleware.js';
 
 const app = express();
+
+app.use(express.json());
+
+app.use(cors({
+  origin: 'https://eventorganization-frontend.onrender.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 app.use(express.json());
 
