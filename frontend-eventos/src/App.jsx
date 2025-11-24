@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar, Ticket, Plus, Edit2, Trash2, X, Search, TrendingUp, Clock, MapPin, UserCheck, User } from 'lucide-react';
 
-const API_URL = '/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 export default function EventsApp() {
   const [activeTab, setActiveTab] = useState('events');
