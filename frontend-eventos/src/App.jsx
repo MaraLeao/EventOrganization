@@ -148,7 +148,7 @@ export default function EventsApp() {
       const headers = { Authorization: `Bearer ${token}` };
 
       if (isAdmin && activeTab === 'users') {
-        const res = await fetch(`${API_URL}/api/users`, { headers });
+        const res = await fetch(`${API_URL}/users`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar usuários');
@@ -157,7 +157,7 @@ export default function EventsApp() {
       }
 
       if (activeTab === 'events') {
-        const res = await fetch(`${API_URL}/api/events`, { headers });
+        const res = await fetch(`${API_URL}/events`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar eventos');
@@ -170,7 +170,7 @@ export default function EventsApp() {
         (!isAdmin && activeTab === 'myTickets');
 
       if (shouldFetchTickets) {
-        const res = await fetch(`${API_URL}/api/tickets`, { headers });
+        const res = await fetch(`${API_URL}/tickets`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar ingressos');
@@ -179,7 +179,7 @@ export default function EventsApp() {
       }
 
       if (!isAdmin && activeTab === 'account' && currentUser) {
-        const res = await fetch(`${API_URL}/api/users/${currentUser.id}`, { headers });
+        const res = await fetch(`${API_URL}/users/${currentUser.id}`, { headers });
         if (!res.ok) {
           if (res.status === 401) return handleUnauthorized();
           throw new Error('Erro ao carregar dados do usuário');
@@ -269,7 +269,7 @@ export default function EventsApp() {
       }
       const endpoint = modalType === 'user' ? 'users' : modalType === 'event' ? 'events' : 'tickets';
       const method = editingItem ? 'PUT' : 'POST';
-      const url = editingItem ? `${API_URL}/api/${endpoint}/${editingItem.id}` : `${API_URL}/api/${endpoint}`;
+      const url = editingItem ? `${API_URL}/${endpoint}/${editingItem.id}` : `${API_URL}/${endpoint}`;
       let bodyData = formData;
 
       if (modalType === 'event') {
@@ -350,7 +350,7 @@ export default function EventsApp() {
         return handleUnauthorized();
       }
       const endpoint = type === 'user' ? 'users' : type === 'event' ? 'events' : 'tickets';
-      const response = await fetch(`${API_URL}/api/${endpoint}/${id}`, {
+      const response = await fetch(`${API_URL}/${endpoint}/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -385,7 +385,7 @@ export default function EventsApp() {
               password: authData.password,
             };
 
-      const response = await fetch(`${API_URL}/api/auth/${endpoint}`, {
+      const response = await fetch(`${API_URL}/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -447,7 +447,7 @@ export default function EventsApp() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/users/${currentUser.id}`, {
+      const response = await fetch(`${API_URL}/users/${currentUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -483,7 +483,7 @@ export default function EventsApp() {
     try {
       setFormError('');
       setUsageCode('');
-      const response = await fetch(`${API_URL}/api/tickets/${editingItem.id}/use`, {
+      const response = await fetch(`${API_URL}/tickets/${editingItem.id}/use`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
